@@ -1,5 +1,5 @@
 #include "../exercise.h"
-
+#include <utility>
 // READ: 左值右值（概念）<https://learn.microsoft.com/zh-cn/cpp/c-language/l-value-and-r-value-expressions?view=msvc-170>
 // READ: 左值右值（细节）<https://zh.cppreference.com/w/cpp/language/value_category>
 // READ: 关于移动语义 <https://learn.microsoft.com/zh-cn/cpp/cpp/rvalue-reference-declarator-amp-amp?view=msvc-170#move-semantics>
@@ -15,21 +15,42 @@ class DynFibonacci {
 
 public:
     // TODO: 实现动态设置容量的构造器
-    DynFibonacci(int capacity): cache(new ?), cached(?) {}
+    DynFibonacci(int capacity): cache(new size_t[capacity]{0,1}), cached(2) {
+    }
 
     // TODO: 实现移动构造器
-    DynFibonacci(DynFibonacci &&) noexcept = delete;
+    DynFibonacci(DynFibonacci& other) noexcept
+    //:cache(std::exchage(other.cache,nullptr)),cached(std::exchage(cached,0))
+    : cache(other.cache), cached(other.cached) { //复制other字段到本类
+        other.cache = nullptr; //删除输入连接
+        other.cached = 0;
+    }
 
     // TODO: 实现移动赋值
     // NOTICE: ⚠ 注意移动到自身问题 ⚠
-    DynFibonacci &operator=(DynFibonacci &&) noexcept = delete;
+    DynFibonacci &operator=(DynFibonacci &&other) noexcept { //&& 表示这是一个「移动赋值运算符」，专门用于接收临时对象（右值），从而实现高效的资源转移（move semantics）。
+        if (this == &other)
+        {
+            std::cout<<"self assignment detected"<<std::endl;
+        }
+        else{
+            delete [] cache;
+            cached = std::exchange(other.cached,0); // cached=other.cached; other.cached= nullptr;
+            cache = std::exchange(other.cache,nullptr); //std::memcpy(cache,other.cache,cached*sizeof(size_t));other.cache=0;
+            
+        }
+        
+        return *this;
+    };
 
     // TODO: 实现析构器，释放缓存空间
-    ~DynFibonacci();
+    ~DynFibonacci(){
+        delete [] cache;
+    };
 
     // TODO: 实现正确的缓存优化斐波那契计算
     size_t operator[](int i) {
-        for (; false; ++cached) {
+        for (; cached<=i; ++cached) {
             cache[cached] = cache[cached - 1] + cache[cached - 2];
         }
         return cache[i];
@@ -51,7 +72,7 @@ int main(int argc, char **argv) {
     DynFibonacci fib(12);
     ASSERT(fib[10] == 55, "fibonacci(10) should be 55");
 
-    DynFibonacci const fib_ = std::move(fib);
+    DynFibonacci const fib_ = std::move(fib);  //右值引用
     ASSERT(!fib.is_alive(), "Object moved");
     ASSERT(fib_[10] == 55, "fibonacci(10) should be 55");
 
