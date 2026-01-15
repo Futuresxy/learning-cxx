@@ -10,6 +10,12 @@ struct Tensor4D {
     Tensor4D(unsigned int const shape_[4], T const *data_) {
         unsigned int size = 1;
         // TODO: 填入正确的 shape 并计算 size
+        for (size_t i = 0; i < 4; i++)
+        {
+            shape[i] = shape_[i];
+            size *= shape[i];//要拷贝一个四维张量
+        }
+        
         data = new T[size];
         std::memcpy(data, data_, size * sizeof(T));
     }
@@ -18,8 +24,35 @@ struct Tensor4D {
     }
 
     // 为了保持简单，禁止复制和移动
-    Tensor4D(Tensor4D const &) = delete;
-    Tensor4D(Tensor4D &&) noexcept = delete;
+    Tensor4D(Tensor4D const &others) {
+        unsigned int size = 1;
+       for (size_t i = 0; i < 4; i++)
+        {
+            shape[i] = others.shape[i];
+            size *= shape[i];
+        }
+        data = new T [size];
+        std::memcpy(data , others.data,size*sizeof(T))
+
+    };
+
+
+    Tensor4D(Tensor4D &&others) noexcept {
+        //偷资源直接改指针
+        for (size_t i = 0; i < 4; i++)
+        {
+            shape[i] = others.shape[i];
+        }
+        data = others.data;
+        //在吧原来的指针指向空，防止删除时也delete掉新指向的内存，清除内容
+        others.data = nullptr;
+        for (size_t i = 0; i < 4; i++)
+        {
+            others.shape[i]=0;
+        }
+        
+
+    };
 
     // 这个加法需要支持“单向广播”。
     // 具体来说，`others` 可以具有与 `this` 不同的形状，形状不同的维度长度必须为 1。
@@ -28,6 +61,41 @@ struct Tensor4D {
     // 则 `this` 与 `others` 相加时，3 个形状为 `[1, 2, 1, 4]` 的子张量各自与 `others` 对应项相加。
     Tensor4D &operator+=(Tensor4D const &others) {
         // TODO: 实现单向广播的加法
+    bool broadcast[4];
+    for (auto i = 0u; i < 4; ++i)
+        if (broadcast[i] = shape[i] != others.shape[i]) // 如果形状不一致就需要广播
+            ASSERT(others.shape[i] == 1, "!");          // 单向广播，others 的对应长度必须为 1
+
+    auto dst = this->data;  // 要加到的元素地址
+    auto src = others.data; // 要加上的元素地址
+    T *marks[4]{src};       // 4 个阶的锚点
+    for (auto i0 = 0u; i0 < shape[0]; ++i0) {
+
+        if (broadcast[0]) src = marks[0]; // 如果这个阶是广播的，回到dim0最开始的锚点位置
+        marks[1] = src;                   // 记录下一阶锚点
+
+        for (auto i1 = 0u; i1 < shape[1]; ++i1) {
+
+            if (broadcast[1]) src = marks[1];
+            marks[2] = src;
+
+            for (auto i2 = 0u; i2 < shape[2]; ++i2) {
+
+                if (broadcast[2]) src = marks[2];
+                marks[3] = src;//记录当前完成dim0后的地址，也就是dim1的入口
+
+                for (auto i3 = 0u; i3 < shape[3]; ++i3) {
+
+                    if (broadcast[3]) src = marks[3];
+                    *dst++ += *src++;
+
+                }
+            }
+        }
+    }
+
+
+
         return *this;
     }
 };
