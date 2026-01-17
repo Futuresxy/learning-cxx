@@ -1,14 +1,22 @@
 #include "../exercise.h"
 
 constexpr unsigned long long fibonacci(int i) {
-    switch (i) {
-        case 0:
-            return 0;
-        case 1:
-            return 1;
-        default:
-            return fibonacci(i - 1) + fibonacci(i - 2);
+    // switch (i) {
+    //     case 0:
+    //         return 0;
+    //     case 1:
+    //         return 1;
+    //     default:
+    //         return fibonacci(i - 1) + fibonacci(i - 2); // 递归调用会导致编译器栈溢出
+    // }
+    if (i <= 1) return i;
+    unsigned long long a = 0, b = 1;
+    for (int j = 2; j <= i; ++j) {
+        auto next = a + b;
+        a = b;
+        b = next;
     }
+    return b;
 }
 
 int main(int argc, char **argv) {
